@@ -23,6 +23,11 @@
           scapy
         ]);
 
+        # Create a clang-bpf wrapper: unwrapped clang (no hardening flags) with libbpf headers
+        clangBpf = pkgs.writeShellScriptBin "clang-bpf" ''
+          exec ${pkgs.llvmPackages.clang-unwrapped}/bin/clang -I${pkgs.libbpf}/include "$@"
+        '';
+
       in {
         devShells.default = pkgs.mkShell {
           name = "bpfilter-dev";
@@ -30,13 +35,18 @@
           nativeBuildInputs = with pkgs; [
             # Build system
             cmake
+            ninja
             gnumake
             pkg-config
 
             # Compilers
             clang
             clang-tools  # clang-tidy, clang-format
+            include-what-you-use
             gcc
+
+            # BPF-compatible clang (unwrapped, no hardening flags)
+            clangBpf
 
             # Parser generators
             bison
@@ -56,6 +66,13 @@
             libbpf
             libnl
             libgit2
+
+            # Transitive dependencies (for pkg-config)
+            elfutils  # libelf, required by libbpf
+            openssl   # required by libgit2
+            zlib      # commonly required
+            zstd      # libzstd, required by libelf
+            pcre2     # libpcre2-8, required by libgit2
 
             # Testing
             cmocka
@@ -82,10 +99,17 @@
           ];
 
           shellHook = ''
+            # Add libbpf headers to include path for clang-tidy
+            export CPATH="${pkgs.libbpf}/include''${CPATH:+:$CPATH}"
+
             echo "bpfilter development environment"
-            echo "  Build: cmake -S . -B build && make -C build"
-            echo "  Test:  make -C build test"
-            echo "  Docs:  make -C build doc"
+            echo ""
+            echo "Configure with BPF-compatible clang:"
+            echo "  cmake -GNinja -DCLANG_BIN=$(which clang-bpf) .."
+            echo ""
+            echo "Build:  ninja"
+            echo "Test:   ninja test"
+            echo "Docs:   ninja doc"
           '';
         };
       }
