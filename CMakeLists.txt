@@ -15,8 +15,11 @@ project(bpfilter
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake")
 
-include(GitVersion)
-get_version_from_git()
+option(NO_GIT_VERSION "Disable git-based version detection" 0)
+if (NOT NO_GIT_VERSION)
+    include(GitVersion)
+    get_version_from_git()
+endif ()
 message(NOTICE "bpfilter version ${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
 include(GNUInstallDirs)
